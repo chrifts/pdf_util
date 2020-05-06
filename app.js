@@ -23,8 +23,8 @@ app.post('/', function (req, res) {
     var bookname = 'thebook'
     var form = new formidable.IncomingForm();
 
-   
-    form.parse(req, function (err, fields, files) {
+    try {
+        form.parse(req, function (err, fields, files) {
             os.execCommand('pdftk '+files.theFile.path+' burst output '+__dirname + '/uploads/'+now+'/output_%02d.pdf', function (returnvalue) {
                 //ENCRYPT
                 os.execCommand('cd '+__dirname+'/uploads/'+now+'; ls | grep -v output_*.*$ | xargs rm', function (countx) {
@@ -45,12 +45,15 @@ app.post('/', function (req, res) {
                 })
                 
             });
-        
-    });
-    form.on('fileBegin', function (name, file){
-        os.execCommand('mkdir uploads/'+now, function (ret) {})
-        file.path = __dirname + '/uploads/'+now+'/' + file.name.replace(/ /g, '');
-    });
+        });
+        form.on('fileBegin', function (name, file){
+            os.execCommand('mkdir uploads/'+now, function (ret) {})
+            file.path = __dirname + '/uploads/'+now+'/' + file.name.replace(/ /g, '');
+        });
+    } catch (error) {
+        res.send(error)
+    }
+    
 });
 
 app.listen(3000, function () {
