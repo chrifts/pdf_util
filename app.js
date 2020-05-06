@@ -18,27 +18,30 @@ function os_func() {
     }
 }
 var os = new os_func();
-
+function pad(num, size) {
+    var s = num+"";
+    while (s.length < size) s = "0" + s;
+    return s;
+}
 function process(now, filePath, bookname, res) {
-    os.execCommand('pdftk '+filePath+' burst output '+__dirname + '/uploads/'+now+'/output_%02d.pdf', function (returnvalue) {
+    os.execCommand('qpdf --split-pages '+filePath+' '+__dirname + '/uploads/'+now+'/output.pdf', function (returnvalue) {
         //ENCRYPT
         os.execCommand('cd '+__dirname+'/uploads/'+now+'; ls | grep -v output_*.*$ | xargs rm', function (countx) {
             os.execCommand('cd '+__dirname+'/uploads/'+now+'; ls | wc -l', function (count) {
                 console.log(count)
-                var i;
+                var digits = count.toString().length;
+		        console.log(digits)
+		        var i;
                 for (i = 1; i <= count; i++) {
-                    i < 10 ? i = '0'+i : i;
-                    os.execCommand('cd '+__dirname+'/uploads/'+now+'; qpdf --encrypt ' + env.ENCRYPTER + ' ' + env.ENCRYPTER + ' 40 -- '+__dirname + '/uploads/'+now+'/output_'+i+'.pdf '+__dirname + '/uploads/'+now+'/encrypted_'+i+'.pdf', function (returnvaluexd) {
-                    })
+                    i = pad(i, digits - 1)
+                    os.execCommand('cd '+__dirname+'/uploads/'+now+'; qpdf --encrypt ' + env.ENCRYPTER + ' ' + env.ENCRYPTER + ' 40 -- '+__dirname + '/uploads/'+now+'/output-'+i+'.pdf '+__dirname + '/uploads/'+now+'/encrypted_'+i+'.pdf', function (returnvaluexd) {})
                 }
-               
                 os.execCommand('cd '+__dirname+'/uploads/'+now+'; zip -r '+bookname+'.zip ' + 'encrypted_*.pdf', function (returnvalue2) {
                     console.log(returnvalue2);
                     res.sendFile(__dirname+'/uploads/'+now+'/'+bookname+'.zip');
                 });
             })
         })
-        
     });
 }
 
@@ -47,24 +50,28 @@ app.post('/', function (req, res) {
     var form = new formidable.IncomingForm();
     var route;
     var bookname = 'thebook';
-    try {
-        form.parse(req, function (err, fields, files) {
-            var filepath = files.theFile.path
-        });
-        form.on('fileBegin', function (name, file){
-            os.execCommand('mkdir uploads/'+now, function (ret) {})
-            file.path = __dirname + '/uploads/'+now+'/' + file.name.replace(/ /g, '');
-            route = file.path;
-        });
-        form.on('end', () => {
-            process(now, route, bookname, res);
-        })
-    } catch (error) {
-        res.send(error)
-    }
-    
+    os.execCommand('mkdir uploads/'+now, function (ret) {
+        try {
+            form.parse(req);
+            form.on('fileBegin', function (name, file){
+                console.log('begin')
+                file.path = __dirname + '/uploads/'+now+'/' + file.name.replace(/ /g, '');
+                route = file.path;           
+            });
+            form.on('file', () => {
+                console.log('end')
+                process(now, route, bookname, res);
+            })
+            form.on('progress', function(bytesReceived, bytesExpected){
+                console.log(bytesReceived, bytesExpected)
+            })
+        } catch (error) {
+            res.send(error)
+        }
+    })
 });
 
 app.listen(3000, function () {
     console.log('Example app listening on port 3000!');
 });
+
